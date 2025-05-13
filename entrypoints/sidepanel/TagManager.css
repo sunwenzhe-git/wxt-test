@@ -1,0 +1,20 @@
+.mantine-ScrollArea-viewport {
+  overflow: visible !important;
+}
+
+.tab-item {
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  border-left: none;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+.tab-item:hover {
+  background-color: #e0e0e0 !important;
+}
+.tab-item.selected {
+  background-color: #fff !important;
+  box-shadow: 0 1px 2px 1px rgba(0,0,0,0.18) !important;
+  z-index: 10;
+} 
