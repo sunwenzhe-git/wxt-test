@@ -9,7 +9,7 @@ lerna-debug.log*
 *storybook.log
 
 node_modules
-# .output
+.output
 stats.html
 stats-*.json
 .wxt

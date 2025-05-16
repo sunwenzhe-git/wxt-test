@@ -1,32 +1,25 @@
+import { forwardRef } from "react";
 import { Box, ActionIcon, Group, Text, Paper } from "@mantine/core";
 import { IconX, IconDragDrop } from "@tabler/icons-react";
 import { Tab } from "../../utils/type";
-export default function TabItem({
-  tab,
-  activeTabId,
-  onTabClick,
-  onTabClose,
-  setActionsTab,
-  onContextMenu,
-}: {
+interface TabItemProps {
   tab: Tab;
   activeTabId: string | null;
   onTabClick: (tabId: string) => void;
   onTabClose: (tabId: string, e: React.MouseEvent) => void;
-  setActionsTab: (tab: Tab) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
-}) {
+}
+const TabItem = forwardRef((props: TabItemProps, ref: any) => {
+  const { tab, activeTabId, onTabClick, onTabClose, onContextMenu } = props;
   return (
     <Paper
+      ref={ref}
       p="xs"
       className={`tab-item${activeTabId === tab.id ? " selected" : ""}`}
       onClick={() => onTabClick(tab.id)}
       onContextMenu={onContextMenu}
     >
       <Group gap="xs" wrap="nowrap">
-        <Box style={{ opacity: 0.5 }}>
-          <IconDragDrop size={14} />
-        </Box>
         {tab.favicon && (
           <img
             src={tab.favicon}
@@ -58,4 +51,5 @@ export default function TabItem({
       </Group>
     </Paper>
   );
-}
+});
+export default TabItem;

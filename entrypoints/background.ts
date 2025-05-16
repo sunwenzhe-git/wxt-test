@@ -23,8 +23,6 @@ export default defineBackground(() => {
     await browser.sidePanel.setOptions({
       tabId,
       enabled: true,
-      // @ts-ignore
-      position: "left",
     });
   });
 });

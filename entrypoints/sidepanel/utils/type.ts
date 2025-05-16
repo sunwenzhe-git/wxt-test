@@ -10,4 +10,6 @@ export interface Tab {
   index: number;
   domain?: string;
   lastAccessed: number;
+  muted: boolean; // 获取静音状态
+  groupId?: number; // 标签分组ID
 }

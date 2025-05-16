@@ -16,16 +16,20 @@ export default function useChromeTabs() {
             const existingTab = prevTabs.find(
               (t) => t.id === tab.id?.toString()
             );
+            console.log(tab, "tab");
             return {
               id: tab.id?.toString() || "",
+              windowId: tab.windowId,
               title: tab.title || "",
               url: tab.url || "",
-              favicon: tab.favIconUrl,
+              favicon: tab.favIconUrl || "/icon/blankTab.png",
               index: tab.index || 0,
               domain: extractDomain(tab.url || ""),
               lastAccessed: tab.active
                 ? currentTime
                 : existingTab?.lastAccessed || currentTime,
+              muted: tab.mutedInfo?.muted || false, // 获取静音状态
+              groupId: tab.groupId,
             };
           });
           formattedTabs.sort((a, b) => a.index - b.index);

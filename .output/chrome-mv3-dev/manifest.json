@@ -9,21 +9,20 @@
     "96": "icon/96.png",
     "128": "icon/128.png"
   },
+  "default_locale": "zh",
   "side_panel": {
     "default_path": "sidepanel.html"
   },
-  "extensionApi": "chrome",
-  "perBrowserTypes": true,
   "permissions": [
     "activeTab",
+    "tabGroups",
     "scripting",
-    "theme",
+    "tabs",
+    "windows",
     "sidePanel",
-    "devtools",
     "contextMenus",
     "storage",
-    "webRequest",
-    "tabs"
+    "webRequest"
   ],
   "action": {},
   "web_accessible_resources": [
