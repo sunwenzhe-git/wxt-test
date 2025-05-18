@@ -3,8 +3,20 @@ import { Tab } from "../utils/type";
 // hooks: 监听和数据处理
 export default function useChromeTabs() {
   const [tabs, setTabs] = useState<Tab[]>([]);
-  const [activeTabId, setActiveTabId] = useState<string | null>(null);
-
+  const [activeTabId, setActiveTabId] = useState<number | null>(null);
+  // 关闭所有标签
+  const handleCloseAllTabs = useCallback(() => {
+    // 创建一个新的空标签页
+    window.chrome.tabs.create({ active: true }, (newTab) => {
+      // 收集所有旧标签页 id（不包括新建的）
+      const oldTabIds = tabs
+        .map((tab) => tab.id)
+        .filter((id) => id !== newTab.id);
+      if (oldTabIds.length > 0) {
+        window.chrome.tabs.remove(oldTabIds);
+      }
+    });
+  }, [tabs]);
   // 更新标签列表
   const updateTabs = useCallback(() => {
     window.chrome.tabs.query(
@@ -13,12 +25,9 @@ export default function useChromeTabs() {
         const currentTime = Date.now();
         setTabs((prevTabs) => {
           const formattedTabs = chromeTabs.map((tab: chrome.tabs.Tab) => {
-            const existingTab = prevTabs.find(
-              (t) => t.id === tab.id?.toString()
-            );
-            console.log(tab, "tab");
+            const existingTab = prevTabs.find((t) => t.id === tab.id);
             return {
-              id: tab.id?.toString() || "",
+              id: tab.id as number,
               windowId: tab.windowId,
               title: tab.title || "",
               url: tab.url || "",
@@ -34,9 +43,7 @@ export default function useChromeTabs() {
           });
           formattedTabs.sort((a, b) => a.index - b.index);
           setActiveTabId(
-            chromeTabs
-              .find((tab: chrome.tabs.Tab) => tab.active)
-              ?.id?.toString() || null
+            chromeTabs.find((tab: chrome.tabs.Tab) => tab.active)?.id || null
           );
           return formattedTabs;
         });
@@ -49,10 +56,10 @@ export default function useChromeTabs() {
 
     const handleActivated = (activeInfo: chrome.tabs.TabActiveInfo) => {
       const currentTime = Date.now();
-      setActiveTabId(activeInfo.tabId.toString());
+      setActiveTabId(activeInfo.tabId);
       setTabs((prevTabs) =>
         prevTabs.map((tab) =>
-          tab.id === activeInfo.tabId.toString()
+          tab.id === activeInfo.tabId
             ? { ...tab, lastAccessed: currentTime }
             : tab
         )
@@ -72,5 +79,12 @@ export default function useChromeTabs() {
     };
   }, [updateTabs]);
 
-  return { tabs, setTabs, activeTabId, setActiveTabId, updateTabs };
+  return {
+    tabs,
+    setTabs,
+    activeTabId,
+    setActiveTabId,
+    updateTabs,
+    handleCloseAllTabs,
+  };
 }

@@ -14,23 +14,18 @@ export default function TabActionsModal({
 
   const handleNewTabBelow = () => {
     chrome.tabs.create({ index: tab.index + 1 });
-    onClose();
   };
   const handleMoveToWindow = () => {
-    chrome.windows.create({ tabId: parseInt(tab.id) });
-    onClose();
+    chrome.windows.create({ tabId: tab.id });
   };
   const handleReload = () => {
-    chrome.tabs.reload(parseInt(tab.id));
-    onClose();
+    chrome.tabs.reload(tab.id);
   };
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(tab.url);
-    onClose();
   };
   const handleMute = () => {
-    chrome.tabs.update(parseInt(tab.id), { muted: true });
-    onClose();
+    chrome.tabs.update(tab.id, { muted: true });
   };
 
   return (
