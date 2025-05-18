@@ -3,6 +3,7 @@ import { CONTENT_SCRIPT_MATCHES } from "./utils/matches";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
+  
   manifest: {
     default_locale: "zh",
     side_panel: {

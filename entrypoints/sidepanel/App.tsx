@@ -14,6 +14,7 @@ function App() {
       style={{
         width: "100%",
         height: "100%",
+        fontSize: 12,
         backgroundColor: theme === "dark" ? "rgb(40,40,40)" : "transparent",
       }}
     >

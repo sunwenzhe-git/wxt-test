@@ -1,23 +1,29 @@
-import React, { useState, useMemo, useEffect, MouseEvent } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  MouseEvent,
+  useCallback,
+} from "react";
 import { ScrollArea, Stack, ActionIcon } from "@mantine/core";
 import { IconPlus, IconPencil } from "@tabler/icons-react";
 import TabPopover from "../TabPopover";
 import useChromeTabs from "../../hooks/useChromeTabs";
-import { Tab } from "../../utils/type";
+import { useStore, useSelector } from "../../store";
 import { ColorMap } from "../../utils/constants";
+import { Tab } from "../../utils/type";
 
 type GroupsAreaProps = {
   searchQuery: string;
 };
 const GroupsArea: React.FC<GroupsAreaProps> = ({ searchQuery }) => {
   const { tabs } = useChromeTabs();
-  const [tabGroups, setTabGroups] = useState<chrome.tabGroups.TabGroup[]>([]);
+  const { setStore, tabGroups } = useStore(
+    useSelector(["tabGroups", "setStore"])
+  );
   const [collapsedGroups, setCollapsedGroups] = useState<
     Record<number, boolean>
   >({});
-  // 统一管理 Popover 打开状态
-  const [openTabId, setOpenTabId] = useState<number | null>(null);
-  const [selectedColorMap, setSelectedColorMap] = useState({});
 
   // 搜索过滤
   const filteredTabs = useMemo(
@@ -36,7 +42,7 @@ const GroupsArea: React.FC<GroupsAreaProps> = ({ searchQuery }) => {
     const windowId = (tabs[0] as any)?.windowId;
     if (windowId) {
       chrome.tabGroups.query({ windowId }, (groups) => {
-        setTabGroups(groups as chrome.tabGroups.TabGroup[]);
+        setStore({ tabGroups: groups });
       });
     }
   }, [tabs]);
@@ -57,13 +63,16 @@ const GroupsArea: React.FC<GroupsAreaProps> = ({ searchQuery }) => {
   }, [filteredTabs]);
 
   // 获取分组头部信息
-  const getGroupInfo = (groupId: number) =>
-    tabGroups.find((g) => g.id === groupId) as chrome.tabGroups.TabGroup;
+  const getGroupInfo = useCallback(
+    (groupId: number) =>
+      tabGroups.find((g) => g.id === groupId) as chrome.tabGroups.TabGroup,
+    [tabGroups]
+  );
 
   // 切换分组展开/收起
-  const toggleGroupCollapse = (groupId: number) => {
+  const toggleGroupCollapse = useCallback((groupId: number) => {
     setCollapsedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
-  };
+  }, []);
   return (
     <ScrollArea style={{ flex: 1, overflow: "visible" }}>
       <Stack gap="xs" style={{ overflow: "visible" }}>
@@ -71,13 +80,15 @@ const GroupsArea: React.FC<GroupsAreaProps> = ({ searchQuery }) => {
         {Object.entries(groupedTabs.groupMap).map(([groupId, tabsInGroup]) => {
           const group = getGroupInfo(Number(groupId));
           const isCollapsed = collapsedGroups[Number(groupId)] ?? false;
-          console.log(group, "group");
+
           return (
             <div key={groupId}>
               {/* 分组头部 */}
+
               <div
                 style={{
                   display: "flex",
+                  justifyContent: "space-between",
                   alignItems: "center",
                   marginBottom: 4,
                   cursor: "pointer",
@@ -88,9 +99,11 @@ const GroupsArea: React.FC<GroupsAreaProps> = ({ searchQuery }) => {
                   style={{
                     background: ColorMap[group?.color],
                     color: "#fff",
-                    borderRadius: 6,
-                    padding: "4px 8px",
-                    fontSize: 13,
+                    borderRadius: 4,
+                    lineHeight: 1,
+                    padding: "6px",
+                    boxSizing: "border-box",
+                    fontSize: 11,
                     fontWeight: 500,
                     display: "flex",
                     alignItems: "center",
@@ -121,61 +134,65 @@ const GroupsArea: React.FC<GroupsAreaProps> = ({ searchQuery }) => {
                   </div>
                   {group?.title}
                 </div>
-                <ActionIcon
-                  size="xs"
-                  variant="subtle"
-                  style={{ marginLeft: 6 }}
-                  onClick={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    // 新建标签页并加入该分组
-                    const groupIdNum = Number(groupId);
-                    const groupTabs = tabs.filter(
-                      (t: Tab) => t.groupId === groupIdNum
-                    );
-                    const insertIndex =
-                      groupTabs.length > 0
-                        ? groupTabs[groupTabs.length - 1].index + 1
-                        : 0;
-                    chrome.tabs.create(
-                      {
-                        windowId: tabs[0]?.windowId,
-                        index: insertIndex,
-                      },
-                      (newTab) => {
-                        if (newTab.id !== undefined) {
-                          chrome.tabs.group({
-                            groupId: groupIdNum,
-                            tabIds: [newTab.id],
-                          });
+                <div>
+                  <ActionIcon
+                    size="xs"
+                    variant="subtle"
+                    style={{ marginLeft: 6 }}
+                    onClick={(e: MouseEvent) => {
+                      e.stopPropagation();
+                      // 新建标签页并加入该分组
+                      const groupIdNum = Number(groupId);
+                      const groupTabs = tabs.filter(
+                        (t: Tab) => t.groupId === groupIdNum
+                      );
+                      const insertIndex =
+                        groupTabs.length > 0
+                          ? groupTabs[groupTabs.length - 1].index + 1
+                          : 0;
+                      chrome.tabs.create(
+                        {
+                          windowId: tabs[0]?.windowId,
+                          index: insertIndex,
+                        },
+                        (newTab) => {
+                          if (newTab.id !== undefined) {
+                            chrome.tabs.group({
+                              groupId: groupIdNum,
+                              tabIds: [newTab.id],
+                            });
+                          }
                         }
+                      );
+                    }}
+                  >
+                    <IconPlus size={14} />
+                  </ActionIcon>
+                  <ActionIcon
+                    size="xs"
+                    variant="subtle"
+                    onClick={(e: MouseEvent) => {
+                      e.stopPropagation();
+                      // 唤起该分组第一个tab的Popover
+                      const groupTabs = tabs.filter(
+                        (t: Tab) => t.groupId === Number(groupId)
+                      );
+                      if (groupTabs.length > 0) {
+                        setStore({ openTabId: groupTabs[0].id });
                       }
-                    );
-                  }}
-                >
-                  <IconPlus size={14} />
-                </ActionIcon>
-                <ActionIcon
-                  size="xs"
-                  variant="subtle"
-                  onClick={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    // 唤起该分组第一个tab的Popover
-                    const groupTabs = tabs.filter(
-                      (t: Tab) => t.groupId === Number(groupId)
-                    );
-                    if (groupTabs.length > 0) {
-                      setOpenTabId(groupTabs[0].id);
-                    }
-                  }}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
+                    }}
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </div>
               </div>
+
               {/* 分组内标签 */}
               {!isCollapsed && (
                 <div style={{ marginTop: 8 }}>
                   {tabsInGroup.map((tab) => (
                     <div
+                      key={tab.id}
                       style={{
                         display: "flex",
                         flexDirection: "row",
@@ -193,16 +210,7 @@ const GroupsArea: React.FC<GroupsAreaProps> = ({ searchQuery }) => {
                         }}
                       ></div>
                       <div style={{ flex: 1 }}>
-                        <TabPopover
-                          key={tab.id}
-                          tab={tab}
-                          tabGroups={tabGroups}
-                          openTabId={openTabId}
-                          setOpenTabId={setOpenTabId}
-                          selectedColorMap={selectedColorMap}
-                          setSelectedColorMap={setSelectedColorMap}
-                          setTabGroups={setTabGroups}
-                        />
+                        <TabPopover key={tab.id} tab={tab} isGroup />
                       </div>
                     </div>
                   ))}
@@ -213,19 +221,11 @@ const GroupsArea: React.FC<GroupsAreaProps> = ({ searchQuery }) => {
         })}
         {/* 渲染未分组标签 */}
         {groupedTabs.ungrouped.map((tab) => (
-          <TabPopover
-            key={tab.id}
-            tab={tab}
-            openTabId={openTabId}
-            setOpenTabId={setOpenTabId}
-            selectedColorMap={selectedColorMap}
-            setSelectedColorMap={setSelectedColorMap}
-            setTabGroups={setTabGroups}
-          />
+          <TabPopover key={tab.id} tab={tab} isGroup={false} />
         ))}
       </Stack>
     </ScrollArea>
   );
 };
 
-export default GroupsArea;
+export default React.memo(GroupsArea);

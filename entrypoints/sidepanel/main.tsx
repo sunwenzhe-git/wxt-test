@@ -10,8 +10,12 @@ import "mantine-contextmenu/styles.layer.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <MantineProvider defaultColorScheme="auto">
-      <ContextMenuProvider>
+    <MantineProvider defaultColorScheme="auto" theme={theme}>
+      <ContextMenuProvider
+        styles={{
+          item: { fontSize: "11px" },
+        }}
+      >
         <App />
       </ContextMenuProvider>
     </MantineProvider>

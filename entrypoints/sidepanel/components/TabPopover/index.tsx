@@ -1,3 +1,4 @@
+import React, { useCallback } from "react";
 import {
   Stack,
   TextInput,
@@ -16,78 +17,85 @@ import useChromeTabs from "../../hooks/useChromeTabs";
 import TabItem from "../TabItem";
 import { Tab } from "../../utils/type";
 import { groupColors, ColorMap } from "../../utils/constants";
+import { useStore, useSelector } from "../../store";
 
 interface TabPopoverProps {
   tab: Tab;
-  tabGroups?: chrome.tabGroups.TabGroup[];
-  openTabId: number | null;
-  setOpenTabId: (id: number | null) => void;
-  selectedColorMap: Record<string, chrome.tabGroups.Color>;
-  setSelectedColorMap: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
-  >;
-  setTabGroups: React.Dispatch<
-    React.SetStateAction<chrome.tabGroups.TabGroup[]>
-  >;
+  isGroup: boolean;
 }
 
-const TabPopover = ({
-  tab,
-  tabGroups,
-  openTabId,
-  setOpenTabId,
-  selectedColorMap,
-  setSelectedColorMap,
-  setTabGroups,
-}: TabPopoverProps) => {
+const TabPopover = React.memo(({ tab, isGroup }: TabPopoverProps) => {
+  const { setStore, tabGroups, openTabId } = useStore(
+    useSelector(["tabGroups", "setStore", "openTabId"])
+  );
+  const [selectedColorMap, setSelectedColorMap] = useState({});
+
   const { tabs } = useChromeTabs();
   const tabKey = tab.id;
   const group = tabGroups?.find((g) => g.id === tab.groupId);
   // 事件处理函数
-  const handleAddTabToGroup = (tabId: number) => {
-    const tab = tabs.find((t: Tab) => t.id === tabId);
-    if (!tab || !tab.groupId || tab.groupId === -1) return;
-    chrome.tabs.create(
-      { windowId: tab.windowId, index: tab.index + 1 },
-      (newTab) => {
-        if (newTab.id !== undefined) {
-          chrome.tabs.group(
-            { groupId: tab.groupId, tabIds: [newTab.id] },
-            () => {}
-          );
+  const handleAddTabToGroup = useCallback(
+    (tabId: number) => {
+      const tab = tabs.find((t: Tab) => t.id === tabId);
+      if (!tab || !tab.groupId || tab.groupId === -1) return;
+      chrome.tabs.create(
+        { windowId: tab.windowId, index: tab.index + 1 },
+        (newTab) => {
+          if (newTab.id !== undefined) {
+            chrome.tabs.group(
+              { groupId: tab.groupId, tabIds: [newTab.id] },
+              () => {}
+            );
+          }
         }
-      }
-    );
-    setOpenTabId(null);
-  };
-  const handleUngroup = (tabId: number) => {
-    const tab = tabs.find((t: Tab) => t.id === tabId);
-    if (!tab || !tab.groupId || tab.groupId === -1) return;
-    chrome.tabs.ungroup([Number(tab.id)]);
-    setOpenTabId(null);
-  };
-  const handleCloseGroup = (tabId: number) => {
-    const tab = tabs.find((t: Tab) => t.id === tabId);
-    if (!tab || !tab.groupId || tab.groupId === -1) return;
-    // 找到该分组下所有tab
-    const groupTabs = tabs.filter((t: Tab) => t.groupId === tab.groupId);
-    chrome.tabs.remove(groupTabs.map((t: Tab) => Number(t.id)));
-    setOpenTabId(null);
-  };
-  const handleMoveGroupToNewWindow = (tabId: number) => {
-    const tab = tabs.find((t: Tab) => t.id === tabId);
-    if (!tab || !tab.groupId || tab.groupId === -1) return;
-    const groupTabs = tabs.filter((t: Tab) => t.groupId === tab.groupId);
-    chrome.windows.create({ tabId: Number(groupTabs[0].id) }, (newWindow) => {
-      if (!newWindow || !newWindow.id) return;
-      // 其余tab移到新窗口
-      const restTabIds = groupTabs.slice(1).map((t: Tab) => Number(t.id));
-      if (restTabIds.length > 0) {
-        chrome.tabs.move(restTabIds, { windowId: newWindow.id, index: -1 });
-      }
-    });
-    setOpenTabId(null);
-  };
+      );
+      setStore({ openTabId: null });
+    },
+    [tabs]
+  );
+
+  const handleUngroup = useCallback(
+    (tabId: number) => {
+      const tab = tabs.find((t: Tab) => t.id === tabId);
+      if (!tab || !tab.groupId || tab.groupId === -1) return;
+      chrome.tabs.ungroup([Number(tab.id)]);
+      setStore({ openTabId: null });
+    },
+    [tabs]
+  );
+
+  const handleCloseGroup = useCallback(
+    (tabId: number) => {
+      const tab = tabs.find((t: Tab) => t.id === tabId);
+      if (!tab || !tab.groupId || tab.groupId === -1) return;
+      // 找到该分组下所有tab
+      const groupTabs = tabs.filter((t: Tab) => t.groupId === tab.groupId);
+      chrome.tabs.remove(groupTabs.map((t: Tab) => Number(t.id)));
+      setStore({ openTabId: null });
+    },
+    [tabs]
+  );
+
+  const handleMoveGroupToNewWindow = useCallback(
+    (tabId: number) => {
+      const tab = tabs.find((t: Tab) => t.id === tabId);
+      if (!tab || !tab.groupId || tab.groupId === -1) return;
+      const groupTabs = tabs.filter((t: Tab) => t.groupId === tab.groupId);
+      chrome.windows.create({ tabId: Number(groupTabs[0].id) }, (newWindow) => {
+        if (!newWindow || !newWindow.id) return;
+        // 其余tab移到新窗口
+        const restTabIds = groupTabs.slice(1).map((t: Tab) => Number(t.id));
+        if (restTabIds.length > 0) {
+          chrome.tabs.move(restTabIds, {
+            windowId: newWindow.id,
+            index: -1,
+          });
+        }
+      });
+      setStore({ openTabId: null });
+    },
+    [tabs]
+  );
   return (
     <Popover
       width={200}
@@ -95,19 +103,16 @@ const TabPopover = ({
       shadow="md"
       opened={openTabId === tabKey}
       offset={-20}
-      onDismiss={() => setOpenTabId(null)}
+      onDismiss={() => setStore({ openTabId: null })}
       key={tabKey}
     >
       <Popover.Target>
-        <div onClick={() => setOpenTabId(tabKey)}>
-          <TabItem
-            tab={tab}
-            tabGroups={tabGroups}
-            groupName={group?.title || ""}
-            selectedColor={selectedColorMap[tabKey]}
-            setOpenTab={() => setOpenTabId(tabKey)}
-          />
-        </div>
+        <TabItem
+          isGroup={isGroup}
+          tab={tab}
+          groupName={group?.title || ""}
+          selectedColor={selectedColorMap[tabKey]}
+        />
       </Popover.Target>
       <Popover.Dropdown>
         <Stack gap="xs">
@@ -126,7 +131,7 @@ const TabPopover = ({
                       chrome.tabGroups.query(
                         { windowId: tab.windowId },
                         (groups) => {
-                          setTabGroups(groups);
+                          setStore({ tabGroups: groups });
                         }
                       );
                     }
@@ -160,7 +165,7 @@ const TabPopover = ({
                         chrome.tabGroups.query(
                           { windowId: tab.windowId },
                           (groups) => {
-                            setTabGroups(groups);
+                            setStore({ tabGroups: groups });
                           }
                         );
                       }
@@ -192,7 +197,7 @@ const TabPopover = ({
             style={{
               textAlign: "left",
               padding: "4px 0",
-              fontSize: 12,
+              fontSize: 11,
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -209,7 +214,7 @@ const TabPopover = ({
             style={{
               textAlign: "left",
               padding: "4px 0",
-              fontSize: 12,
+              fontSize: 11,
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -226,7 +231,7 @@ const TabPopover = ({
             style={{
               textAlign: "left",
               padding: "4px 0",
-              fontSize: 12,
+              fontSize: 11,
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -243,7 +248,7 @@ const TabPopover = ({
             style={{
               textAlign: "left",
               padding: "4px 0",
-              fontSize: 12,
+              fontSize: 11,
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -259,6 +264,6 @@ const TabPopover = ({
       </Popover.Dropdown>
     </Popover>
   );
-};
+});
 
 export default TabPopover;
